@@ -212,7 +212,6 @@ def greedy(maze):
     # Call the search function by greedy algorithm
     result = greedy_search(maze,[start],start)
     path = result[1]
-    num_ep = len(visited_queue)
     return path, num_ep
 
 '''
@@ -241,6 +240,7 @@ def greedy_search(maze, final_queue_,start):
     # Made the new visited queue
     visited_queue.append(start) 
     for state in sequeue:
+        num_ep += 1
         if not (state["state"] in visited_queue):
             # Traversal the new neighbors of the state
             # return with a True for convinient to judge in next recursion
@@ -259,7 +259,7 @@ def greedy_search(maze, final_queue_,start):
 def astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    # Astar for single Dots
+    # Astar for single Dots/multiple Dots
     # Initialization
     init_astar_search(maze)
 
