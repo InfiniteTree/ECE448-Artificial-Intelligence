@@ -37,7 +37,7 @@ def search(maze, searchMethod):
         "bfs": bfs,
         "dfs": dfs,
         "greedy": greedy,
-        "astar": astar_multi,
+        "astar": astar,
     }.get(searchMethod)(maze)
 
 
@@ -209,7 +209,7 @@ def greedy(maze):
     # Initialization of relative return value and temp data
     init_search(maze)
 
-    # Call the recursive function
+    # Call the search function by greedy algorithm
     result = greedy_search(maze,[start],start)
     path = result[1]
     num_ep = len(visited_queue)
@@ -263,9 +263,11 @@ def astar(maze):
     # Initialization
     init_astar_search(maze)
 
-    # Call the search function
-    path, num_ep = astar_search(maze,start,end)
-
+    if len(maze.getObjectives()) == 1:
+        # Call the search function to find the single dot
+        path, num_ep = astar_single(maze,start,end)
+    elif len(maze.getObjectives()) > 1:
+        path, num_ep = astar_multi(maze)
     return path, num_ep
 
 ''' 
@@ -283,7 +285,7 @@ Output: path, num_ep
 Side Effect: Relative global avgs
 '''
 
-def astar_search(maze,start,end):
+def astar_single(maze,start,end):
     global path, shortest_path, visited, Frontier, num_ep
     inni_Mdis = get_Mdis(start, end) 
     Frontier.append([inni_Mdis,start])
@@ -346,6 +348,7 @@ def astar_search(maze,start,end):
 Function toNextP_Heuristic
 Instruction: 
 Use Prim algorithm to get the Minimum Spanning Tree
+Input: start state, objectives remained to go
 Output: an objective following the heuristic out of the whole list
 '''
 
@@ -360,9 +363,9 @@ def toNextP_Heuristic(start,objectives_togo):
 def astar_multi(maze):
     shortest_path=deque()
     start_state=maze.getStart()
-    objectives=maze.getObjectives()#objective is a list
-    #print objectives
-    count=1    
+    objectives=maze.getObjectives() #objective is a list
+    
+    count=0  # Counter to record the path founded
     num_ep = 0
     # Search until the all the objectives found
     while objectives:
@@ -386,8 +389,8 @@ def astar_multi(maze):
         while Frontier:
             Node=Frontier.popleft()
             if Node in objectives:
-                num_ep += 1
                 visited.append(Node)
+                num_ep += 1
                 objectives.remove(Node)
                 Visited_objective = Node
                 break    
@@ -395,34 +398,43 @@ def astar_multi(maze):
                 Node=Frontier.popleft()
 
             if Node not in visited:
+                visited.append(Node)
                 num_ep += 1
                 for i in maze.getNeighbors(Node[0],Node[1]):
-                    if maze.isValidMove(i[0],i[1]) and i not in visited and i not in Frontier:#can lead to infinite loop
+                    if maze.isValidMove(i[0],i[1]) and i not in visited and i not in Frontier:
                         cur_hn=toNextP_Heuristic(i,objectives)
                         cur_cn=cn[Node]+1
-                        if i in Frontier and fn[i]<cur_cn+cur_hn:
+                        if i in Frontier and fn[i]<cur_cn+cur_hn: # Jump back to for loop to check the next neighbor
                             continue
-                        else:
+                        else: # Explore the state i
                             fn[i]=cur_hn+cur_cn
                             hn[i]=cur_hn
                             cn[i]=cur_cn
                             Frontier.append(i)
-                            parent[i]=Node
-                visited.append(Node)
+                            parent[i]=Node # Update the parent of i as Node
+
 
         onePath.appendleft(Visited_objective)
+
+        # BackTracking one path to get the objective until the start state is found
         while start_state not in onePath:
             Visited_objective=parent[Visited_objective]
             onePath.appendleft(Visited_objective)
         start_state=visited[-1]
         
-        # To find first Corner, not need to delete the start_state
-        if count==1:
+        # To find first Path, not need to delete the start_state
+        if count==0:
             shortest_path+=onePath
-        # For the next point , we need to delete the start_state
+        # For the next path to the objective , we need to delete the start_state
         else:
             onePath.remove(Visited_objective)
             shortest_path+=onePath
         count+=1
+        ### print ("Count is ",count)
     return list(shortest_path),num_ep
+
+# Remains to do
+def extra():
+    return [],0
+    
 
