@@ -91,3 +91,4 @@ class Maze:
             if self.isValidMove(r,c):
                 neighbors.append((r,c))
         return neighbors
+    
