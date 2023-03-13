@@ -24,6 +24,9 @@ files and classes when code is run, so be careful to not modify anything else.
 
 from collections import deque
 import maze
+from collections import Counter
+#import copy
+#from copy import deepcopy
 
 path = [] # temp path that is recorded
 result = [] # Final successful path
@@ -38,6 +41,7 @@ def search(maze, searchMethod):
         "dfs": dfs,
         "greedy": greedy,
         "astar": astar,
+        "extra": extra,
     }.get(searchMethod)(maze)
 
 
@@ -256,10 +260,16 @@ def greedy_search(maze, final_queue_,start):
                 pass
     return [False]
 
+
+# c(n) = g(n) + d(n)
+# f(n) = g(n) + h(h)
+# c(n) is the actual cost to run from the current state to the goal and f(n) is the idea cost to run
+# where g(n) is the cost that have already been taken, d(n) is the actual cost that should be take to 
+# reach the goal, and h(n) is the heuristic number(in the maze we use the Mahanttan distance to the goal)
 def astar(maze):
     # TODO: Write your code here
     # return path, num_states_explored
-    # Astar for single Dots/multiple Dots
+    # Astar for single Dots/multiple Dots 
     # Initialization
     init_astar_search(maze)
 
@@ -271,22 +281,17 @@ def astar(maze):
     return path, num_ep
 
 ''' 
-Function astar_search
+Function astar_single
 Instruction:
-# c(n) = g(n) + d(n)
-# f(n) = g(n) + h(h)
-# c(n) is the actual cost to run from the current state to the goal and f(n) is the idea cost to run
-# where g(n) is the cost that have already been taken, d(n) is the actual cost that should be take to 
-# reach the goal, and h(n) is the heuristic number(in the maze we use the Mahanttan distance to the goal)
 # By A* search we can try to find the smallest f(n) which can furthur reach the goal to be the state of 
-# the shortest path
+# the shortest path where fn = hn + cn, hn is manhattan distance
 Input: maze, start, end
 Output: path, num_ep
 Side Effect: Relative global avgs
 '''
 
 def astar_single(maze,start,end):
-    global path, shortest_path, visited, Frontier, num_ep
+    global path, shortest_path, visited, Frontier, num_ep, MSTree
     inni_Mdis = get_Mdis(start, end) 
     Frontier.append([inni_Mdis,start])
     pre_Frontier = Frontier
@@ -315,8 +320,14 @@ def astar_single(maze,start,end):
                     path[ts] = head_state
                     # Manhattan distance is regraded as the heuristic number
                     Mdis = get_Mdis(ts, end)
-                    # f(n) = n + Mdis
-                    Frontier.append([n + Mdis,ts])
+                    MSTree = MST(maze,ts,end)
+                    if (len(maze.getObjectives())==1):
+                        fn = Mdis
+                    elif (len(maze.getObjectives())>1):
+                        fn = MSTree
+                    # For singdot:f(n) = n + Mdis
+                    # For multiple dots: fn = n + MST
+                    Frontier.append([fn,ts])
             visited.append(head_state)
 
             #!!!make a copy
@@ -344,53 +355,85 @@ def astar_single(maze,start,end):
     path = list(shortest_path)
     return path, num_ep
 
-''' 
-Function toNextP_Heuristic
-Instruction: 
-Use Prim algorithm to get the Minimum Spanning Tree
-Input: start state, objectives remained to go
-Output: an objective following the heuristic out of the whole list
-'''
 
-def toNextP_Heuristic(start,objectives_togo):
-    ans=list()
-    for i in objectives_togo:
-        ans.append(abs(start[0]-i[0])+abs(start[1]-i[1]))
-    threshold=min(ans)
-    return threshold
+
+''' 
+Function MST
+Instruction: 
+Use Prim algorithm to generate the Minimum Spanning Tree (MST)
+Input: start state, objectives remained to go
+Output: an tree graph indicates the MST
+'''
+def MST(maze,start_state,unvisited):
+    global MSTree
+    MSTree = {}
+    MSTdis = 0
+    mapNodes = list() # mapped Nodes
+    mapNodes.append(start_state)
+    unmapNodes = list(unvisited) # Unmapped Nodes remains to figure out the min distance
+    len_unvisited = len(unvisited)
+    
+
+    while len(unmapNodes)>1:
+        for node1 in mapNodes[::-1]:
+            min_distance = maze.getDimensions()[0] + maze.getDimensions()[1] # Reset min_distance
+            for node2 in unmapNodes[::-1]:
+                dis = get_Mdis(node1,node2)
+                #print("dis is",dis)
+                if dis<min_distance:
+                    min_distance = dis
+                    TargetNode = node2
+                    # Make sure the keys are unique while value can be the same for different keys
+            MSTree[(node1,TargetNode)] = dis # key: the new node in unvisited; value: some current node in visited
+            MSTdis += min_distance
+            mapNodes.append(TargetNode)
+            if len(mapNodes)==len_unvisited+1:
+                    break
+            unmapNodes.remove(TargetNode) 
+            
+            ### print("Target Node is",TargetNode)
+            ### print("MSTdis is",MSTdis)   
+
+    return MSTdis
+
 
 # Astar for multiple objective dots
-def astar_multi(maze):
-    shortest_path=deque()
+''' 
+Function astar_multi
+Instruction:
+# By A* search we can try to find the smallest f(n) which can furthur reach the goal to be the state of 
+# the shortest path where fn = hn + cn, hn is MST
+Input: maze, method (default method is 1, method can be set to 2 to reprensent the extra search method)
+Output: path, num_ep
+Side Effect: Relative global avgs
+'''
+def astar_multi(maze,method=1):
+    global path_mul, num_ep_mul
+    path_mul=deque()
     start_state=maze.getStart()
-    objectives=maze.getObjectives() #objective is a list
-    
-    count=0  # Counter to record the path founded
-    num_ep = 0
+    objectives=maze.getObjectives()#objective is a list
+    #print objectives
+    count=0    
+    num_ep_mul = 0
     # Search until the all the objectives found
     while objectives:
         # fn = hn + gn
-        # hn represents the MST, use Prim algorithm to get MST 
+        # fn represents the heuristic number I design
         # cn represents current cost to the Cur_Node
-        visited=deque()
-        unvisited = deque(objectives)
-        
-        for i in visited:
-            unvisited.pop(i)
         fn, cn, hn = {}, {}, {}
         cn[start_state]=0
-        hn[start_state]=toNextP_Heuristic(start_state,objectives) #+ MST(maze,start_state,unvisited)
+        hn[start_state]=MST(maze,start_state,objectives) * method
         fn[start_state]=hn[start_state]+cn[start_state]
         Frontier=deque()
         Frontier.append(start_state)
+        visited=deque()
         onePath=deque()
         parent={}
         # Search to get a path
         while Frontier:
-            Node=Frontier.popleft()
+            Node=Frontier.popleft()   
             if Node in objectives:
                 visited.append(Node)
-                num_ep += 1
                 objectives.remove(Node)
                 Visited_objective = Node
                 break    
@@ -398,43 +441,43 @@ def astar_multi(maze):
                 Node=Frontier.popleft()
 
             if Node not in visited:
-                visited.append(Node)
-                num_ep += 1
+                num_ep_mul += 1
                 for i in maze.getNeighbors(Node[0],Node[1]):
                     if maze.isValidMove(i[0],i[1]) and i not in visited and i not in Frontier:
-                        cur_hn=toNextP_Heuristic(i,objectives)
+                        cur_hn=MST(maze,i,objectives) * method
                         cur_cn=cn[Node]+1
-                        if i in Frontier and fn[i]<cur_cn+cur_hn: # Jump back to for loop to check the next neighbor
+                        if i in Frontier and fn[i]<cur_cn+cur_hn:
                             continue
-                        else: # Explore the state i
+                        else:
                             fn[i]=cur_hn+cur_cn
                             hn[i]=cur_hn
                             cn[i]=cur_cn
                             Frontier.append(i)
-                            parent[i]=Node # Update the parent of i as Node
-
+                            parent[i]=Node
+                visited.append(Node)
 
         onePath.appendleft(Visited_objective)
-
-        # BackTracking one path to get the objective until the start state is found
         while start_state not in onePath:
             Visited_objective=parent[Visited_objective]
             onePath.appendleft(Visited_objective)
         start_state=visited[-1]
         
-        # To find first Path, not need to delete the start_state
+        # To find first Corner, not need to delete the start_state
         if count==0:
-            shortest_path+=onePath
-        # For the next path to the objective , we need to delete the start_state
+            path_mul+=onePath
+        # For the next point , we need to delete the start_state
         else:
             onePath.remove(Visited_objective)
-            shortest_path+=onePath
+            path_mul+=onePath
         count+=1
-        ### print ("Count is ",count)
-    return list(shortest_path),num_ep
+    return list(path_mul),num_ep_mul
 
 # Remains to do
+
 def extra():
-    return [],0
-    
+
+    astar_multi(maze,2)
+
+    return list(path_mul),num_ep_mul
+
 
