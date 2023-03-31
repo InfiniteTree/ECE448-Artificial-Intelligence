@@ -99,8 +99,8 @@ if __name__ == "__main__":
     We won't gaurantee which tests your code will be run on, however if it runs
     well on the pentomino set you should be fine. 
     """
-    board = instances.board_6x10
-    pents = instances.dominos
+    board = instances.board_3x20
+    pents = instances.pentnominos
     sol_list = solve(board, pents)
     if check_correctness(sol_list, board, pents):
         print("PASSED!")
