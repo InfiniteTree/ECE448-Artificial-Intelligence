@@ -2,6 +2,7 @@
 import numpy as np
 import collections
 from collections import  defaultdict
+### import time
 
 
 def getPTypeAndLable(pent):
@@ -98,18 +99,32 @@ def in_bound(board_size, pent):
     '''
     return 0 <= pent[0] < board_size[0] and 0 <= pent[1] < board_size[1]
 
-def GDFS_forward_checking(board, cur_y):
+def if_forwardCheck(x,y,p_type):
     '''
     Function GDFS_forward_checking
-    Input: the current board, the current position x, the current position y
+    Input: the current position x, the current position y,  p_type
+    Output: A bool value to indicate whether it is needed to do the forward checking
+    '''
+    if x==0 and (y+1)//p_type >=2: # To do forward checking
+        ### print("x and nump_type is",x,(y+1)//p_type)
+        return True
+    else: # Not to do
+        return False
+
+def GDFS_forward_checking(board, num_remain_pents, p_type):
+    '''
+    Function GDFS_forward_checking
+    Input: the current board, the number of the remained pents,  p_type
     Output: A bool value to indicate whether the forward checking is successful
     '''
     fc_flag = True
-    for i in range(cur_y):
-        for j in range(board.shape[0]):
-            if board[i][j] == -1: # blank point exits previously
-                fc_flag = False
-                break
+    unfix = 0
+    for i, j in ((i, j) for j in range(board.shape[1]) for i in range(board.shape[0])):
+        if board[i][j] == -1:
+            unfix += 1
+    ### print("unfix is", unfix)
+    if unfix > num_remain_pents * p_type:
+        fc_flag = False
     return fc_flag
 
 def pents_Gdfs(board, pents_maps,  p_type, dfs_call):
@@ -117,10 +132,10 @@ def pents_Gdfs(board, pents_maps,  p_type, dfs_call):
     Function: pents_dfs
     Instruction: Using GDFS algorithm doing recursion to find a accessible solution:
                  Consider to fix all the points of the board one by one with the order from left to right
-                 row by row. Use Heuristics that 
+                 column by column. Use Heuristics that 
                  1)choose the next variable(the point) to asign by LRV 
                  2) use early detection of failure by use forward checking.
-    Input: board_size, pent
+    Input: board_size, pent, p_type,dfs_call
     Output: a tuple with two variables:
             a bool value: True indicates in bound while false for out of bound
             a new board: a board that is resulted with inserted pents on it
@@ -131,14 +146,14 @@ def pents_Gdfs(board, pents_maps,  p_type, dfs_call):
     
     # The pents_maps is empty
     if not pents_maps:
-        ### print("dfs time is", dfs_call[0])
-        
         find_status = True
+        # print("dfs called num is", dfs_call[0])
         return find_status, board
 
     # Traversal all of the points in the board matrix to put the pents into it
-    for x, y in ((x, y) for y in range(board.shape[1]) for x in range(board.shape[0])):
-        # First find the the uncovered position to add a pent
+    # Use generator type to decreas for loop time and  speed up
+    for x, y in ((x, y) for y in range(board.shape[1]) for x in range(board.shape[0])): 
+    # First find the the uncovered position to add a pent
         if board[x][y] == 0:
             # Use each pent with smallest mutations one by one to check whether it can be fit in the board (LRV)
             for plabel, mutations in pents_maps.items():
@@ -152,23 +167,28 @@ def pents_Gdfs(board, pents_maps,  p_type, dfs_call):
                         if not in_bound(board.shape, pent) or board[x + x_move][y + y_move] != 0:
                             next_loop = True
                             break
-                        # Use forward checking to do early detection of failure solution
-                        if x == 0: # Check in the start of a new row
-                            if y == p_type:
-                                if not GDFS_forward_checking(board, y):
-                                    next_loop = True
-                                    break
+
                     # continue to the next mutation fixing if out of board or fail insertion detected
                     if next_loop:
                         continue
+
+                    # Use forward checking to do early detection of failure solution      
+                    if if_forwardCheck(x,y,p_type):
+                        num_remain_pents = len(pents_maps)
+                        ### print("number of remain_pents is",num_remain_pents)
+                        fc_flag = GDFS_forward_checking(board, num_remain_pents,p_type)
+                        if fc_flag == False:
+                            return find_status, board #Early backward tracing
+                    
 
                     # data updated for next recursion
                     new_board = np.array(board)
                     new_pents_maps = dict(pents_maps)
                     new_pents_maps.pop(plabel)
+
                     for x_move, y_move in mutation:
                         new_board[x + x_move][y + y_move] = plabel # add the pent to the board
-                    
+
                     # dfs Recursion: forward-tracking
                     find_status, res_board = pents_Gdfs(new_board, new_pents_maps,  p_type, dfs_call)
 
@@ -176,7 +196,6 @@ def pents_Gdfs(board, pents_maps,  p_type, dfs_call):
                         return find_status, res_board
 
             return find_status, board
-
 
 def solve(board, pents):
     """
@@ -197,16 +216,23 @@ def solve(board, pents):
     board[board == 0] = -1
     board[board == 1] = 0
     
-    #print("pents_maps is",pents_map)
+    ### print("pents_maps is",pents_map)
     pents_maps = getPentsMap(pents)
     p_type = getPTypeAndLable(pents[0])[0]
 
     init_call = [0] # Use a list to counter the number of times call by recursive pents_dfs. list:Variable type
+    
+    ### print("with Forward Checking")
+    ### start_time = time.time()
     res_status, res_board = pents_Gdfs(board, dict(pents_maps), p_type, init_call)
+    ### end_time = time.time()
+    
+    ### run_time  = (end_time - start_time) * 1000
+    ### print("The running time of GDFS is (in ms)",run_time)
     ### print(res_status)
-    print(res_board)  # UI print for the tiled board
+    # print(res_board)  # UI print for the tiled board
     
-    
+    # not solutions found
     if not res_status:
         print("Failed: Could not found a solution")
         return
@@ -236,7 +262,8 @@ def solve(board, pents):
         ### print(sol)
         return sol
 
-
+# Not use search method but transform it into a exact cover problem
+# Not required in this mp
 def solveAll(board, pents):
     '''
     Function: solveAll
@@ -247,11 +274,10 @@ def solveAll(board, pents):
     problem with less O(n) and S(n) especially if with larger size of the board.
     '''
     # Part 1.1 Transform the polyomino problem into a exact cover problem
-
-
     # Part 1.2 using DLX algorithm to solve the exact cover problem
     # DLX: Using Dancing linked data structure to accomplish nondeterministic algorithm (X algorithm)
     # DLX is provided by Donald E. Knuth from Stanford University
-
     # Part 1.3 use the solution by the cover problem to get the return value 
+
+
 
