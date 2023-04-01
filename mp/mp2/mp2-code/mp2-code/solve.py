@@ -131,8 +131,9 @@ def pents_Gdfs(board, pents_maps,  p_type, dfs_call):
     '''
     Function: pents_dfs
     Instruction: Using GDFS algorithm doing recursion to find a accessible solution:
-                 Consider to fix all the points of the board one by one with the order from left to right
-                 column by column. Use Heuristics that 
+                 Consider to tile each pent onto the board to fix all the points of the board 
+                 one by one with the order from up to down and left to right.
+                 Use Heuristics that 
                  1)choose the next variable(the point) to asign by LRV 
                  2) use early detection of failure by use forward checking.
     Input: board_size, pent, p_type,dfs_call
