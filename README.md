@@ -1,3 +1,3 @@
 # ECE448
-Artificial Intelligence
-SP2023 ZJUI
+### Artificial Intelligence SP2023 ZJUI
+
