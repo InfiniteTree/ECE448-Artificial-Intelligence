@@ -1,6 +1,7 @@
 from time import sleep
 from math import inf
 from random import randint
+from copy import deepcopy
 import numpy as np
 
 class ultimateTicTacToe:
@@ -41,8 +42,8 @@ class ultimateTicTacToe:
         # cyh的参数
         self.Design_twoInARowMaxUtility=500
         self.Design_preventThreeInARowMaxUtility=100
-        self.Design_twoInARowMinUtility=-100
-        self.Design_preventThreeInARowMinUtility=-500
+        self.Design_twoInARowMinUtility=-1000
+        self.Design_preventThreeInARowMinUtility=-200
         self.centerMaxUtility = 80
         self.centerMinUtility = -80
 
@@ -64,6 +65,7 @@ class ultimateTicTacToe:
         self.isDesign = False
 
 #-------------------------- New Utility score Helper Function-------------------------------
+    '''
     def ExtraRule(self, isMax):
         # 如果 two in a row 指向的 local board 依旧存在 two in a row， 则加20分。
 
@@ -123,7 +125,7 @@ class ultimateTicTacToe:
                     utility += extra
 
         return utility
-    
+        '''
     def SecondRule(self, isMax, designed=False):
         """
         This function calculates the utility score by the predifined second rule.
@@ -196,17 +198,15 @@ class ultimateTicTacToe:
                     utility += self.cornerMin[designed]
         return utility
     
-    def DesignFourthRule(self, isMax):
-        utility = 0
-        num_center_occupy = 0
-        player = self.maxPlayer if isMax else self.minPlayer
-
-        for x, y in self.globalIdx:
-            if self.board[x + 1][y + 1] == player:
-                num_center_occupy += 1
-        if self.isDesign:
-            utility +=  num_center_occupy**1 * 60
-        return utility
+    # def DesignFourthRule(self, isMax):
+    #     utility = 0
+    #     num_center_occupy = 0
+    #     player = self.maxPlayer if isMax else self.minPlayer
+    #     for x, y in self.globalIdx:
+    #         if self.board[x + 1][y + 1] == player:
+    #                num_center_occupy += 1
+    #     utility -= num_center_occupy * 90
+    #     return utility
 
     def printGameBoard(self):
         """
@@ -264,12 +264,12 @@ class ultimateTicTacToe:
         elif winner == -1:
             return self.winnerMinUtility
         # Second rule:two in low
-        score += self.SecondRule(isMax, True)
+        score += self.SecondRule(False, True)
         # Third rule: For each corner taken by the offensive agent, increment the utility
-        score += self.ThirdRule(isMax, True)
+        score += self.ThirdRule(False, True)
 
         # Additional score
-        score += self.DesignFourthRule(isMax)
+        # score += self.DesignFourthRule(False)
 
         ### score += self.ExtraRule(isMax)
 
@@ -502,8 +502,10 @@ class ultimateTicTacToe:
                 self.board[self.bestIdx[0]][self.bestIdx[1]]=self.maxPlayer
             else:
                 self.board[self.bestIdx[0]][self.bestIdx[1]]=self.minPlayer
-            gameBoards.append(self.board)
-            bestMove.append(self.bestIdx)
+            tp_board=deepcopy(self.board)
+            gameBoards.append(tp_board)
+            tp_idx=deepcopy(self.bestIdx)
+            bestMove.append(tp_idx)
             bestValue.append(Value)
             expandedNodes.append(self.expandedNodes-1)
             now*=-1
@@ -526,7 +528,9 @@ class ultimateTicTacToe:
         self.isDesign = True
         #now=randint(0,1) 
         now = AgentFirst
-
+        first_step=0
+        if(now):
+            first_step=-1
         # print('now is ',now)
         if(now==0):
             now=-1      #-1 means our agent.
@@ -540,15 +544,28 @@ class ultimateTicTacToe:
             if(now==1):
                 self.alphabeta(3,currBoardIdx,-inf,inf,True)
             else:
-                self.isDesign = True
-                self.alphabeta(3,currBoardIdx,-inf,inf,False)
+                if(first_step==1):
+                    self.alphabeta(3,currBoardIdx,-inf,inf,False)
+                else:
+                    x,y=self.globalIdx[currBoardIdx][0]+currBoardIdx//3,self.globalIdx[currBoardIdx][1]+currBoardIdx%3
+                    if(first_step==-1 and self.board[x][y]=='_'):
+                        self.bestIdx=(x,y)
+                    else:
+                        self.bestIdx=(self.globalIdx[currBoardIdx][0]+1,self.globalIdx[currBoardIdx][1]+1)
+                    # if(currBoardIdx==5):
+                    #     self.bestIdx=(4,8)
+                    # if(currBoardIdx==3):
+                    #     self.bestIdx=(4,0)
+                    first_step=1
 
             if(now==1):
                 self.board[self.bestIdx[0]][self.bestIdx[1]]=self.maxPlayer
             else:
                 self.board[self.bestIdx[0]][self.bestIdx[1]]=self.minPlayer
-            gameBoards.append(self.board)
-            bestMove.append(self.bestIdx)
+            tp_board=deepcopy(self.board)
+            gameBoards.append(tp_board)
+            tp_idx=deepcopy(self.bestIdx)
+            bestMove.append(tp_idx)
             now*=-1
             currBoardIdx=self.bestIdx[0]%3*3+self.bestIdx[1]%3
 
@@ -602,9 +619,12 @@ class ultimateTicTacToe:
                 self.alphabeta(3,currBoardIdx,-inf,inf,False)
                 self.board[self.bestIdx[0]][self.bestIdx[1]]=self.minPlayer
                 currBoardIdx=self.bestIdx[0]%3*3+self.bestIdx[1]%3
-                bestMove.append(self.bestIdx)
+                tp_idx=deepcopy(self.bestIdx)
+                bestMove.append(tp_idx)
 
-            gameBoards.append(self.board)
+            tp_board=deepcopy(self.board)
+            gameBoards.append(tp_board)
+            
             now*=-1
             
         winner=self.checkWinner()
@@ -620,30 +640,38 @@ class ultimateTicTacToe:
 if __name__=="__main__":
     # feel free to write your own test code
     #----------------------------Test for PredifinedAgent-----------------------------------
-    '''
-    uttt=ultimateTicTacToe()
-    gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(False,True,False)
-    #print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][:3]])+'\n')
-    #print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][3:6]])+'\n')
-    #print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][6:9]])+'\n')
-    if winner == 1:
-        print("The winner is maxPlayer!!!")
-    elif winner == -1:
-        print("The winner is minPlayer!!!")
-    else:
-        print("Tie. No winner:(")
-    '''
+    
+    # uttt=ultimateTicTacToe()
+    # gameBoards, bestMove, expandedNodes, bestValue, winner=uttt.playGamePredifinedAgent(False,False,False)
+    # print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][:3]])+'\n')
+    # print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][3:6]])+'\n')
+    # print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][6:9]])+'\n')
+
+    # print('Average expanded nodes:',np.mean(expandedNodes))
+    # if winner == 1:
+    #     print("The winner is maxPlayer!!!")
+    # elif winner == -1:
+    #     print("The winner is minPlayer!!!")
+    # else:
+    #     print("Tie. No winner:(")
+    
     
     #----------------------------Test for YourAgent----------------------------------------
     ### uttt=ultimateTicTacToe()
     total = 18
     Dwin = 0 # the number of times that the designed agent wins
     for i in range(9):
-        for j in range(2):
+         for j in range(2):
             uttt=ultimateTicTacToe()
             gameBoards, bestMove, winner=uttt.playGameYourAgent(j, i)
             if winner == -1:
                 Dwin += 1
+            else:
+                print('Off:',j)
+                print('start board:',i)
+                print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[2][:3]])+'\n')
+                print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[2][3:6]])+'\n')
+                print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[2][6:9]])+'\n')
          # print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][:3]])+'\n')
          # print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][3:6]])+'\n')
          # print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][6:9]])+'\n')
@@ -659,3 +687,5 @@ if __name__=="__main__":
     print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][3:6]])+'\n')
     print('\n'.join([' '.join([str(cell) for cell in row]) for row in gameBoards[-1][6:9]])+'\n')
     '''
+    
+
