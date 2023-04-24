@@ -36,3 +36,4 @@ def plotdata(X, y, wf, wg, desc):
     plt.plot(x, temp_y, color='b', linewidth=2, linestyle='--')
     plt.title(desc)
     plt.show()
+    

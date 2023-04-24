@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 def plotdata_log_reg(X, y, wf, wg, desc):
     '''
     PLOTDATA Plot data set.
@@ -37,3 +36,4 @@ def plotdata_log_reg(X, y, wf, wg, desc):
     plt.plot(x, temp_y, color='b', linewidth=2, linestyle='--')
     plt.title(desc)
     plt.show()
+    
