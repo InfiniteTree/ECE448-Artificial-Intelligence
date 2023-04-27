@@ -28,6 +28,18 @@ def plot_visualization(images, classes, cmap):
         ax[i%2, i//2].set_title(classes[i])
     plt.show()
 
+#help plot function
+def help_plot(images, min_max):
+    """Plot the visualizations 
+    """    
+    fig, ax = plt.subplots(2, 5, figsize=(12, 5))
+    for i in range(10):
+        ax[i%2, i//2].imshow(images[int(min_max[i][0])].reshape((28, 28)), cmap="Greys",vmin=0, vmax=255)
+        ax[i%2, i//2].set_xticks([])
+        ax[i%2, i//2].set_yticks([])
+        ax[i%2, i//2].set_title(i)
+    plt.show()
+
 def plot_confusion_matrix(y_true, y_pred, classes,
                           normalize=False,
                           title=None,
@@ -103,6 +115,10 @@ if __name__ == '__main__':
     plot_visualization(feature_likelihoods, class_names, "Greys")
     # Classify the test sets. 
     accuracy, y_pred = NB.test(x_test,y_test)
+
+    # accuracy, y_pred, min_fig, max_fig = NB.test(x_test,y_test)
+    # help_plot(x_test,min_fig)
+    
     # Plot confusion matrix. 
     plot_confusion_matrix(y_test, y_pred, classes=class_names, normalize=True,
                       title='Confusion matrix, with normalization')
